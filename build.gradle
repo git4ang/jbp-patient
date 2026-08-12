@@ -36,3 +36,7 @@ dependencies {
 application {
     mainClass = 'fr.testlab.jbp.patient.app.JbpApplication'
 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-nowarn']
+}

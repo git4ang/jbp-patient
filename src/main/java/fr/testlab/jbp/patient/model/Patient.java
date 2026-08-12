@@ -1,8 +1,7 @@
 package fr.testlab.jbp.patient.model;
 
-// POJO simple — pas d'annotations JPA (@Entity, @Table...)
-// En v5 Jeebop, les donnees transitent via des beans XML/JSON,
-// pas via un ORM. On stocke ici en memoire pour simplifier.
+// POJO simple - pas d'annotations JPA (@Entity, @Table...)
+// Stockage en memoire - pas de base de donnees, pas d'ORM.
 public class Patient {
 
     private int    id;
