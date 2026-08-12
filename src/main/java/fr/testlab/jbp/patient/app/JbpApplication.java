@@ -1,58 +1,55 @@
 package fr.testlab.jbp.patient.app;
 
+import fr.testlab.jbp.patient.auth.BasicAuthFilter;
 import fr.testlab.jbp.patient.resource.PatientResource;
 import fr.testlab.jbp.patient.service.PatientService;
 
-import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
+import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+// G6 : SLF4J + log4j2, CXF 4.x/jakarta.*, Virtual Thread watchdog, auth basique
 public class JbpApplication {
 
-    private static final Logger log = Logger.getLogger(JbpApplication.class);
+    // (1) SLF4J facade : l'implementation (log4j2) est choisie via log4j-slf4j2-impl dans le classpath
+    private static final Logger log = LoggerFactory.getLogger(JbpApplication.class);
 
     public static void main(String[] args) throws Exception {
 
-        // (1) Un seul PatientService partage entre toutes les requetes (singleton)
-        // Le ConcurrentHashMap est initialise une seule fois, les donnees persistent
         PatientService service = new PatientService();
         PatientResource resource = new PatientResource(service);
 
-        // (2) Fabrique CXF : configure le serveur JAX-RS embarque (Jetty sur port 8080)
         JAXRSServerFactoryBean factory = new JAXRSServerFactoryBean();
         factory.setAddress("http://localhost:8080/api");
-
-        // (3) setServiceBeans() = instances singletons - CXF reutilise le meme objet
-        // Differe de setResourceClasses() qui creerait une nouvelle instance par requete
         factory.setServiceBeans(List.of(resource));
 
-        // (4) Jackson convertit automatiquement Patient <-> JSON sur chaque requete
-        factory.setProviders(List.of(new JacksonJsonProvider()));
+        // (2) jackson-jakarta-rs remplace jackson-jaxrs (namespace jakarta vs javax)
+        //     BasicAuthFilter : filtre JAX-RS qui verifie l'en-tete Authorization
+        factory.setProviders(List.of(new JacksonJsonProvider(), new BasicAuthFilter()));
 
         Server server = factory.create();
-        log.info("jbp-patient demarre sur http://localhost:8080/api");
-        log.info("Endpoints : GET/POST /api/patients  GET/DELETE /api/patients/{id}");
+        log.info("jbp-patient G6 demarre sur http://localhost:8080/api");
+        log.info("Stack : CXF 4.x + jakarta.* + log4j2 + SLF4J + Virtual Thread");
 
-        // (5) Watchdog - Platform Thread - etat v5-like, sera migre en G3
-        // daemon=true : ce thread ne bloque pas l'arret de la JVM
-        Thread watchdog = new Thread(() -> {
-            while (true) {
+        // (3) Virtual Thread watchdog (remplace Platform Thread de G1)
+        //     Thread.ofVirtual() : JDK 21+ standard (pas de preview en Java 25)
+        //     daemon implicite pour les virtual threads
+        Thread watchdog = Thread.ofVirtual().name("jbp-watchdog").start(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Thread.sleep(30_000);
-                    log.info("[watchdog] serveur actif - platform thread");
+                    log.info("[watchdog] serveur actif - virtual thread");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    break;
                 }
             }
-        }, "jbp-watchdog");
-        watchdog.setDaemon(true);
-        watchdog.start();
+        });
 
         server.start();
-        Thread.currentThread().join(); // (6) maintenir le processus principal actif
+        Thread.currentThread().join(); // maintenir le processus principal actif
     }
 }

@@ -15,7 +15,7 @@ services:
       - jbp-net
     ports:
       - "8090:8080"    # UI Jenkins (8080 pris par jbp-patient)
-      - "50050:50000"  # agents Jenkins distribues (50000 pris par IntelliJ IDEA)
+      - "50500:50000"  # agents Jenkins distribues (50000 pris par IntelliJ IDEA)
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker pour les builds

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Appenders>
+
+        <!-- Console : stdout (remplace ConsoleAppender log4j 1.x) -->
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %c{1} - %m%n"/>
+        </Console>
+
+        <!-- Fichier rolling : 10 Mo max, 5 fichiers (identique a log4j 1.x) -->
+        <RollingFile name="file"
+                     fileName="logs/jbp-patient.log"
+                     filePattern="logs/jbp-patient-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %c{1} - %m%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="5"/>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+        <!-- Logger racine : INFO vers console + fichier -->
+        <Root level="INFO">
+            <AppenderRef ref="console"/>
+            <AppenderRef ref="file"/>
+        </Root>
+    </Loggers>
+
+</Configuration>

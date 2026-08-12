@@ -1,7 +1,8 @@
 package fr.testlab.jbp.patient.service;
 
 import fr.testlab.jbp.patient.model.Patient;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,17 +10,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+// G6 : SLF4J (remplace org.apache.log4j.Logger de G1)
 public class PatientService {
 
-    // log4j 1.x - etat v5-like, G4 skippe
-    private static final Logger log = Logger.getLogger(PatientService.class);
+    private static final Logger log = LoggerFactory.getLogger(PatientService.class);
 
-    // Stockage en memoire - ConcurrentHashMap : thread-safe sans synchronized
     private final Map<Integer, Patient> store   = new ConcurrentHashMap<>();
     private final AtomicInteger         counter = new AtomicInteger(1);
 
     public PatientService() {
-        // Donnees de depart pour tester les GET sans creer de patients
         save(new Patient(0, "Dupont", "Marie",  "marie@testlab.fr"));
         save(new Patient(0, "Martin", "Pierre", "pierre@testlab.fr"));
     }
@@ -29,19 +28,19 @@ public class PatientService {
     }
 
     public Patient findById(int id) {
-        return store.get(id); // null si non trouve - PatientResource retourne 404
+        return store.get(id);
     }
 
     public Patient save(Patient p) {
-        if (p.getId() == 0) {             // 0 = nouveau patient, pas encore d'id
+        if (p.getId() == 0) {
             p.setId(counter.getAndIncrement());
         }
         store.put(p.getId(), p);
-        log.info("Patient sauvegarde id=" + p.getId());
+        log.info("Patient sauvegarde id={}", p.getId());  // SLF4J : {} au lieu de +
         return p;
     }
 
     public boolean delete(int id) {
-        return store.remove(id) != null;  // true si existait, false si absent
+        return store.remove(id) != null;
     }
 }
