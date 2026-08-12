@@ -3,8 +3,10 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
-# Logs runtime
-logs/
+# Logs runtime (fichiers seulement — le dossier est tracke via logs/.gitkeep)
+logs/*.log
+logs/*.log.gz
+logs/errors/*.log
 
 # IntelliJ IDEA
 .idea/
