@@ -1,6 +1,6 @@
 #version: '3.8'
 
-# Reseau interne pour que Jenkins puisse appeler les autres services par nom
+# Réseau interne pour que Jenkins puisse appeler les autres services par nom
 networks:
   jbp-net:
     driver: bridge
@@ -19,11 +19,12 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker pour les builds
+      - /opt/jdk-25:/opt/jdk-25:ro                 # JDK 25 hôte monte en lecture seule
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
     restart: unless-stopped
 
-  # ─── Gitea (remote Git local - optionnel, decommenter si pas de GitHub) ───
+  # ─── Gitea (remote Git local - optionnel, décommenter si pas de GitHub) ───
   # gitea:
   #   image: gitea/gitea:latest
   #   container_name: jbp-gitea
