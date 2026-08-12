@@ -4,10 +4,10 @@ plugins {
 }
 
 group = 'fr.testlab.jbp'
-version = '1.0.0'
+version = '2.0.0'  // G6 : stack moderne
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25  // Java 25 des G1 — compatible v6
+    sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }
 
@@ -16,25 +16,34 @@ repositories {
 }
 
 dependencies {
-    // CXF 3.x — utilise javax.* (etat v5-like, sera migre en G2)
-    implementation 'org.apache.cxf:cxf-rt-frontend-jaxrs:3.5.9'
-    implementation 'org.apache.cxf:cxf-rt-transports-http-jetty:3.5.9'
+    // CXF 4.x -- utilise jakarta.* (migration depuis javax.*)
+    implementation 'org.apache.cxf:cxf-rt-frontend-jaxrs:4.0.5'
+    implementation 'org.apache.cxf:cxf-rt-transports-http-jetty:4.0.5'
 
-    // JAX-RS API javax.* (sera migre vers jakarta.* en G2)
-    implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    // Jakarta REST API 3.x (remplace javax.ws.rs)
+    implementation 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
 
-    // JSON — serialisation Patient <-> JSON
-    implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.15.4'
+    // Jackson avec module Jakarta (remplace jackson-jaxrs pour javax.*)
+    implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.15.4'
 
-    // log4j 1.x (EOL, etat v5-like — G4 skippe, reste en place)
-    implementation 'log4j:log4j:1.2.17'
+    // SLF4J API -- facade de logging
+    implementation 'org.slf4j:slf4j-api:2.0.13'
 
-    // Test placeholder JUnit 4 (sera migre vers JUnit 5 en G6)
-    testImplementation 'junit:junit:4.13.2'
+    // log4j2 -- implementation SLF4J (remplace log4j 1.x EOL)
+    implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1'
+
+    // JUnit 5 (remplace JUnit 4)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 application {
     mainClass = 'fr.testlab.jbp.patient.app.JbpApplication'
+}
+
+test {
+    useJUnitPlatform()  // active le moteur JUnit 5
 }
 
 tasks.withType(JavaCompile).configureEach {
