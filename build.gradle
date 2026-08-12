@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'fr.testlab.jbp'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25  // Java 25 des G1 — compatible v6
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // CXF 3.x — utilise javax.* (etat v5-like, sera migre en G2)
+    implementation 'org.apache.cxf:cxf-rt-frontend-jaxrs:3.5.9'
+    implementation 'org.apache.cxf:cxf-rt-transports-http-jetty:3.5.9'
+
+    // JAX-RS API javax.* (sera migre vers jakarta.* en G2)
+    implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+
+    // JSON — serialisation Patient <-> JSON
+    implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.15.4'
+
+    // log4j 1.x (EOL, etat v5-like — G4 skippe, reste en place)
+    implementation 'log4j:log4j:1.2.17'
+
+    // Test placeholder JUnit 4 (sera migre vers JUnit 5 en G6)
+    testImplementation 'junit:junit:4.13.2'
+}
+
+application {
+    mainClass = 'fr.testlab.jbp.patient.app.JbpApplication'
+}
