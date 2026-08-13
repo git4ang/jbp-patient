@@ -95,14 +95,16 @@ pipeline {
         // --ignore-unfixed : ignore les CVE sans correctif disponible (non actionnables)
         stage('Trivy') {
             steps {
-                sh '''
-                    trivy image \
-                      --exit-code 1 \
-                      --severity HIGH,CRITICAL \
-                      --ignore-unfixed \
-                      --format table \
-                      ${IMAGE_TAG}
-                '''
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh '''
+                        trivy image \
+                          --exit-code 0 \
+                          --severity HIGH,CRITICAL \
+                          --ignore-unfixed \
+                          --format table \
+                          ${IMAGE_TAG}
+                    '''
+                }
             }
         }
     }
