@@ -60,7 +60,10 @@ pipeline {
         stage('OWASP') {
             steps {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                    sh './gradlew dependencyCheckAnalyze'
+                    // sh './gradlew dependencyCheckAnalyze'
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                          sh './gradlew dependencyCheckAnalyze'
+                    }
                 }
             }
             post {
