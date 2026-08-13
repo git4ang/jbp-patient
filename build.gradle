@@ -29,13 +29,22 @@ dependencies {
     // SLF4J API -- facade de logging
     implementation 'org.slf4j:slf4j-api:2.0.13'
 
-    // log4j2 -- implementation SLF4J (remplace log4j 1.x EOL)
+    // log4j2 -- implémentation SLF4J (remplace log4j 1.x EOL)
     implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1'
 
     // JUnit 5 (remplace JUnit 4)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Testcontainers -- démarre un vrai PostgreSQL Docker pendant les tests
+    // junit-jupiter : intégration avec @Testcontainers et @Container de JUnit 5
+    // postgresql    : module qui sait démarrer l'image postgres:16
+    testImplementation 'org.testcontainers:junit-jupiter:1.21.0'
+    testImplementation 'org.testcontainers:postgresql:1.21.0'
+
+    // Driver JDBC PostgreSQL -- connexion à PostgreSQL via DriverManager
+    testImplementation 'org.postgresql:postgresql:42.7.3'
 }
 
 application {
@@ -44,6 +53,13 @@ application {
 
 test {
     useJUnitPlatform()  // active le moteur JUnit 5
+
+    // Fix C09 : docker-java envoie GET /v1.32/info par défaut
+    // Docker Engine 29.x impose MinAPIVersion=1.44 -> rejette avec HTTP 400
+    // api.version=1.44 est la propriété système lue par DefaultDockerClientConfig
+    // pour construire le pathPrefix de l'URL HTTP vers le socket Docker
+    environment 'DOCKER_HOST', System.getenv('DOCKER_HOST') ?: 'unix:///var/run/docker.sock'
+    systemProperty 'api.version', '1.44'
 }
 
 tasks.withType(JavaCompile).configureEach {
