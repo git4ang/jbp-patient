@@ -65,9 +65,33 @@ pipeline {
         }
     }
 
+    // OWASP Dependency Check : scanne les CVE dans les dépendances build.gradle
+              // Rapport HTML publié dans Jenkins via publishHTML (plugin HTML Publisher requis)
+              // Premier run lent (téléchargement base NVD ~200MB) -- suivants depuis cache
+              stage('OWASP') {
+                  steps {
+                      withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                        sh './gradlew dependencyCheckAnalyze'
+                      }
+                  }
+                  post {
+                      always {
+                          publishHTML(target: [
+                              allowMissing         : false,
+                              alwaysLinkToLastBuild: true,
+                              keepAll              : true,
+                              reportDir            : 'build/reports/dependency-check',
+                              reportFiles          : 'dependency-check-report.html',
+                              reportName           : 'OWASP Dependency Check'
+                          ])
+                      }
+                  }
+              }
+
+
     post {
         success {
-            echo "Pipeline G7 OK - tests + couverture JaCoCo + SonarQube + image Docker ${IMAGE_TAG}"
+            echo "Pipeline G7 OK - tests + couverture JaCoCo + SonarQube + image Docker + OWASP ${IMAGE_TAG}"
         }
         failure {
             echo 'Pipeline FAILED - voir les logs et le rapport de tests'

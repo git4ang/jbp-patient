@@ -2,10 +2,11 @@ plugins {
     id 'java'
     id 'application'
     // Plugin SonarQube -- version compatible Gradle 9.x
-    // Parametres passes via -D sur la ligne de commande (token jamais commite)
     id 'org.sonarqube' version '7.3.1.8318'
     // JaCoCo -- mesure la couverture de tests, génère un rapport XML lu par SonarQube
     id 'jacoco'
+    // OWASP Dependency Check -- scanne les CVE dans les dépendances
+    id 'org.owasp.dependencycheck' version '10.0.4'
 }
 
 group = 'fr.testlab.jbp'
@@ -21,22 +22,22 @@ repositories {
 }
 
 dependencies {
-    // CXF 4.x -- utilise jakarta.* (migration depuis javax.*)
-    implementation 'org.apache.cxf:cxf-rt-frontend-jaxrs:4.0.5'
-    implementation 'org.apache.cxf:cxf-rt-transports-http-jetty:4.0.5'
+    // CXF 4.0.6 -- correctifs sécurité vs 4.0.5 (CVE-2025-23184, CVE-2025-48913...)
+    implementation 'org.apache.cxf:cxf-rt-frontend-jaxrs:4.0.6'
+    implementation 'org.apache.cxf:cxf-rt-transports-http-jetty:4.0.6'
 
     // Jakarta REST API 3.x (remplace javax.ws.rs)
     implementation 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
 
-    // Jackson avec module Jakarta (remplace jackson-jaxrs pour javax.*)
-    implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.15.4'
+    // Jackson 2.17.2 -- correctifs sécurité vs 2.15.4 (CVE-2023-35116, CVE-2026-545xx...)
+    implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.17.2'
 
     // SLF4J API -- facade de logging
     implementation 'org.slf4j:slf4j-api:2.0.13'
 
-    // log4j2 -- implémentation SLF4J (remplace log4j 1.x EOL)
-    implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
-    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1'
+    // log4j2 2.24.3 -- correctifs sécurité vs 2.23.1 (CVE-2026-34477 RCE, CVE-2025-68161...)
+    implementation 'org.apache.logging.log4j:log4j-core:2.24.3'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3'
 
     // JUnit 5 (remplace JUnit 4)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
@@ -58,7 +59,6 @@ test {
     useJUnitPlatform()
 
     // Fix C09 : api.version=1.44 force docker-java à utiliser l'API 1.44
-    // Docker Engine 29.x impose MinAPIVersion=1.44 (rejette 1.32 avec HTTP 400)
     environment 'DOCKER_HOST', System.getenv('DOCKER_HOST') ?: 'unix:///var/run/docker.sock'
     systemProperty 'api.version', '1.44'
 
@@ -79,6 +79,20 @@ jacocoTestReport {
 sonarqube {
     properties {
         property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+    }
+}
+
+// OWASP Dependency Check
+dependencyCheck {
+    failBuildOnCVSS = 7
+    outputDirectory = 'build/reports/dependency-check'
+    formats = ['HTML', 'XML']
+    nvd.apiKey = System.getenv('NVD_API_KEY') ?: ''
+    analyzers {
+        // OSS Index (Sonatype) nécessite un compte -- désactivé (C14)
+        ossIndex {
+            enabled = false
+        }
     }
 }
 
