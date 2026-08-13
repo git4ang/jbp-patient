@@ -1,6 +1,11 @@
 plugins {
     id 'java'
     id 'application'
+    // Plugin SonarQube -- version compatible Gradle 9.x
+    // Parametres passes via -D sur la ligne de commande (token jamais commite)
+    id 'org.sonarqube' version '7.3.1.8318'
+    // JaCoCo -- mesure la couverture de tests, génère un rapport XML lu par SonarQube
+    id 'jacoco'
 }
 
 group = 'fr.testlab.jbp'
@@ -38,8 +43,6 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Testcontainers -- démarre un vrai PostgreSQL Docker pendant les tests
-    // junit-jupiter : intégration avec @Testcontainers et @Container de JUnit 5
-    // postgresql    : module qui sait démarrer l'image postgres:16
     testImplementation 'org.testcontainers:junit-jupiter:1.21.0'
     testImplementation 'org.testcontainers:postgresql:1.21.0'
 
@@ -52,14 +55,31 @@ application {
 }
 
 test {
-    useJUnitPlatform()  // active le moteur JUnit 5
+    useJUnitPlatform()
 
-    // Fix C09 : docker-java envoie GET /v1.32/info par défaut
-    // Docker Engine 29.x impose MinAPIVersion=1.44 -> rejette avec HTTP 400
-    // api.version=1.44 est la propriété système lue par DefaultDockerClientConfig
-    // pour construire le pathPrefix de l'URL HTTP vers le socket Docker
+    // Fix C09 : api.version=1.44 force docker-java à utiliser l'API 1.44
+    // Docker Engine 29.x impose MinAPIVersion=1.44 (rejette 1.32 avec HTTP 400)
     environment 'DOCKER_HOST', System.getenv('DOCKER_HOST') ?: 'unix:///var/run/docker.sock'
     systemProperty 'api.version', '1.44'
+
+    // JaCoCo : active la collecte de couverture pendant l'exécution des tests
+    finalizedBy jacocoTestReport
+}
+
+// JaCoCo : génère le rapport XML après les tests (lu par SonarQube)
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true   // SonarQube lit le XML (pas le HTML)
+        html.required = true  // HTML utile pour consulter la couverture en local
+    }
+}
+
+// SonarQube : indique où trouver le rapport JaCoCo
+sonarqube {
+    properties {
+        property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
