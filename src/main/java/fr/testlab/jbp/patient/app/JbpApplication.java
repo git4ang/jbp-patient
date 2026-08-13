@@ -24,7 +24,9 @@ public class JbpApplication {
         PatientResource resource = new PatientResource(service);
 
         JAXRSServerFactoryBean factory = new JAXRSServerFactoryBean();
-        factory.setAddress("http://localhost:8080/api");
+        // 0.0.0.0 : écoute sur toutes les interfaces réseau du conteneur
+        // localhost : écoute uniquement sur la loopback (127.0.0.1) -- inaccessible depuis l'extérieur du conteneur
+        factory.setAddress("http://0.0.0.0:8080/api");
         factory.setServiceBeans(List.of(resource));
 
         // (2) jackson-jakarta-rs remplace jackson-jaxrs (namespace jakarta vs javax)
@@ -32,7 +34,7 @@ public class JbpApplication {
         factory.setProviders(List.of(new JacksonJsonProvider(), new BasicAuthFilter()));
 
         Server server = factory.create();
-        log.info("jbp-patient G6 demarre sur http://localhost:8080/api");
+        log.info("jbp-patient G6 demarre sur http://0.0.0.0:8080/api");
         log.info("Stack : CXF 4.x + jakarta.* + log4j2 + SLF4J + Virtual Thread");
 
         // (3) Virtual Thread watchdog (remplace Platform Thread de G1)

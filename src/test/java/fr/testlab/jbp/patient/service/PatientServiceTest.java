@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -66,7 +67,9 @@ class PatientServiceTest {
     @Test
     void deletePatient_unknownId_returnsFalse() {
         boolean deleted = service.delete(999);
-        assertTrue(!deleted, "delete doit retourner false si le patient n'existait pas");
+        // assertFalse (remplace assertTrue(!deleted)) -- règle SonarQube S2701 :
+        // utiliser l'assertion sémantiquement correcte pour un message d'erreur lisible
+        assertFalse(deleted, "delete doit retourner false si le patient n'existait pas");
     }
 
     @Test
