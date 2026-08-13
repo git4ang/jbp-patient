@@ -1,6 +1,7 @@
 #version: '3.8'
 
-# Réseau interne pour que Jenkins puisse appeler les autres services par nom
+# Réseau interne pour que Jenkins et SonarQube communiquent par nom de conteneur
+# Jenkins appelle SonarQube via http://jbp-sonar:9000 (pas localhost)
 networks:
   jbp-net:
     driver: bridge
@@ -18,10 +19,27 @@ services:
       - "50500:50000"  # agents Jenkins distribues (50000 pris par IntelliJ IDEA)
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker pour les builds
+      - /var/run/docker.sock:/var/run/docker.sock  # acces Docker pour Testcontainers
       - /opt/jdk-25:/opt/jdk-25:ro                 # JDK 25 hôte monte en lecture seule
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+    restart: unless-stopped
+
+  # ─── SonarQube ────────────────────────────────────────────────────────────
+  sonarqube:
+    image: sonarqube:community
+    container_name: jbp-sonar
+    networks:
+      - jbp-net
+    ports:
+      - "9000:9000"    # UI SonarQube (admin/admin par defaut)
+    volumes:
+      - sonar_data:/opt/sonarqube/data   # projets, regles, historique analyses
+      - sonar_logs:/opt/sonarqube/logs   # logs SonarQube
+    environment:
+      # Desactive les verifications kernel Elasticsearch (vm.max_map_count)
+      # Obligatoire en environnement Docker de test sinon SonarQube refuse de demarrer
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
     restart: unless-stopped
 
   # ─── Gitea (remote Git local - optionnel, décommenter si pas de GitHub) ───
@@ -39,4 +57,6 @@ services:
 
 volumes:
   jenkins_home: {}
+  sonar_data: {}
+  sonar_logs: {}
   # gitea_data: {}
