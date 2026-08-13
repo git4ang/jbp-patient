@@ -1,0 +1,25 @@
+# Répertoire de build Gradle -- contient les classes compilées et JARs
+# Exclu pour ne pas envoyer des centaines de MB inutiles au daemon Docker
+build/
+
+# Cache Gradle local -- téléchargé à l'intérieur du conteneur builder
+.gradle/
+
+# Logs locaux -- jamais dans l'image Docker (les logs vont sur stdout en conteneur)
+logs/
+
+# Fichiers IDE
+.idea/
+*.iml
+out/
+
+# Fichiers Git -- inutiles dans l'image
+.git/
+.gitignore
+
+# Fichiers de documentation -- pas dans l'image de production
+*.md
+tools/
+
+# Variables d'environnement locales (jamais commiter, jamais dans l'image)
+.env
