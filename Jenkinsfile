@@ -5,8 +5,8 @@ pipeline {
         jdk 'jdk25'
     }
 
-    // IMAGE_TAG : tag de l'image Docker -- combinaison du nom du job + numéro de build
-    // Ex. : jbp-patient:42 -- permet de tracer quelle image correspond à quel build
+    // IMAGE_TAG : tag de l'image Docker tracable par numéro de build Jenkins
+    // Ex. : jbp-patient:42 -- permet de savoir quelle image = quel build
     environment {
         IMAGE_TAG = "jbp-patient:${env.BUILD_NUMBER}"
     }
@@ -25,8 +25,8 @@ pipeline {
             }
         }
 
-        // --rerun : force la reexecution des tests meme si Gradle les considere UP-TO-DATE
-        // jacocoTestReport est déclenché automatiquement après les tests (finalizedBy)
+        // --rerun : force la réexécution même si Gradle considère UP-TO-DATE
+        // jacocoTestReport déclenché automatiquement après les tests (finalizedBy)
         stage('Tests') {
             steps {
                 sh './gradlew test --rerun'
@@ -38,8 +38,8 @@ pipeline {
             }
         }
 
-        // SonarQube : analyse qualité + rapport JaCoCo (coverage)
-        // withCredentials injecte SONAR_TOKEN depuis le coffre-fort Jenkins -- jamais en clair
+        // SonarQube : analyse qualité + couverture JaCoCo
+        // withCredentials injecte SONAR_TOKEN depuis le coffre-fort Jenkins
         stage('Sonar') {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
@@ -53,48 +53,63 @@ pipeline {
             }
         }
 
-        // Docker Build : construit l'image à partir du Dockerfile multi-stage
-        // Le .dockerignore exclut build/, .gradle/, logs/, .git/ -- contexte réduit
-        // IMAGE_TAG = "jbp-patient:<numéro-de-build>" -- image tracable par build Jenkins
+        // OWASP : scanne les CVE dans les JARs déclarés dans build.gradle
+        // withCredentials injecte NVD_API_KEY pour accélérer le téléchargement NVD
+        // publishHTML : rapport visible dans Jenkins (plugin HTML Publisher requis)
+        // Premier run : lent (téléchargement base NVD) -- suivants : rapide (cache)
+        stage('OWASP') {
+            steps {
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    sh './gradlew dependencyCheckAnalyze'
+                }
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        allowMissing         : true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll              : true,
+                        reportDir            : 'build/reports/dependency-check',
+                        reportFiles          : 'dependency-check-report.html',
+                        reportName           : 'OWASP Dependency Check'
+                    ])
+                }
+            }
+        }
+
+        // Docker Build : image multi-stage JDK25 → JRE25
+        // .dockerignore exclut build/, .gradle/, logs/, .git/
         stage('Docker Build') {
             steps {
                 sh 'docker build -t ${IMAGE_TAG} .'
-                // Tag supplémentaire "latest" pour toujours avoir un alias stable
                 sh 'docker tag ${IMAGE_TAG} jbp-patient:latest'
+            }
+        }
+
+        // Trivy : scanne les CVE dans les couches OS de l'image Docker
+        // Complète OWASP (JARs Java) avec les vulnérabilités Ubuntu/libc/OpenSSL
+        // --exit-code 1 : build échoue si CVE HIGH ou CRITICAL trouvées dans l'image
+        // --ignore-unfixed : ignore les CVE sans correctif disponible (non actionnables)
+        stage('Trivy') {
+            steps {
+                sh '''
+                    trivy image \
+                      --exit-code 1 \
+                      --severity HIGH,CRITICAL \
+                      --ignore-unfixed \
+                      --format table \
+                      ${IMAGE_TAG}
+                '''
             }
         }
     }
 
-    // OWASP Dependency Check : scanne les CVE dans les dépendances build.gradle
-              // Rapport HTML publié dans Jenkins via publishHTML (plugin HTML Publisher requis)
-              // Premier run lent (téléchargement base NVD ~200MB) -- suivants depuis cache
-              stage('OWASP') {
-                  steps {
-                      withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                        sh './gradlew dependencyCheckAnalyze'
-                      }
-                  }
-                  post {
-                      always {
-                          publishHTML(target: [
-                              allowMissing         : false,
-                              alwaysLinkToLastBuild: true,
-                              keepAll              : true,
-                              reportDir            : 'build/reports/dependency-check',
-                              reportFiles          : 'dependency-check-report.html',
-                              reportName           : 'OWASP Dependency Check'
-                          ])
-                      }
-                  }
-              }
-
-
     post {
         success {
-            echo "Pipeline G7 OK - tests + couverture JaCoCo + SonarQube + image Docker + OWASP ${IMAGE_TAG}"
+            echo "Pipeline G7 OK - Build + Tests + Sonar + OWASP + Docker + Trivy : ${IMAGE_TAG}"
         }
         failure {
-            echo 'Pipeline FAILED - voir les logs et le rapport de tests'
+            echo 'Pipeline FAILED - voir les logs Jenkins et les rapports OWASP/Trivy'
         }
     }
 }
