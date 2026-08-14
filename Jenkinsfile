@@ -121,7 +121,10 @@ pipeline {
                   usernameVariable: 'NEXUS_USER',
                   passwordVariable: 'NEXUS_PASS'
               )]) {
-                  sh './gradlew publish'
+                  // -PreleaseVersion : nom distinct de "version" (propriété interne Gradle)
+                  // findProperty('releaseVersion') dans build.gradle lit cette valeur
+                  // 2.0.${BUILD_NUMBER} --> 2.0.30, 2.0.31... à chaque build Jenkins
+                  sh "./gradlew publish -PreleaseVersion=2.0.${env.BUILD_NUMBER}"
               }
 
               // Push de l'image Docker vers le registre Docker de Nexus
@@ -131,10 +134,13 @@ pipeline {
                   usernameVariable: 'NEXUS_USER',
                   passwordVariable: 'NEXUS_PASS'
               )]) {
+                  // docker login/tag/push passent par le daemon Docker de l'HÔTE (socket monté)
+                  // Le daemon hôte ne connaît pas "jbp-nexus" (DNS interne Docker)
+                  // Il faut utiliser localhost:8082 (port mappé hôte → conteneur Nexus)
                   sh '''
-                      echo "$NEXUS_PASS" | docker login jbp-nexus:8082 -u "$NEXUS_USER" --password-stdin
-                      docker tag ${IMAGE_TAG} jbp-nexus:8082/jbp-patient:${BUILD_NUMBER}
-                      docker push jbp-nexus:8082/jbp-patient:${BUILD_NUMBER}
+                      echo "$NEXUS_PASS" | docker login localhost:8082 -u "$NEXUS_USER" --password-stdin
+                      docker tag ${IMAGE_TAG} localhost:8082/jbp-patient:${BUILD_NUMBER}
+                      docker push localhost:8082/jbp-patient:${BUILD_NUMBER}
                   '''
               }
           }
@@ -143,7 +149,12 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline G7 OK - Build + Tests + Sonar + OWASP + Docker + Trivy : ${IMAGE_TAG}"
+            echo "Pipeline G7 OK - Build + Tests + Sonar + OWASP + Docker + Trivy + Nexus : ${IMAGE_TAG}"
+        }
+        // unstable : déclenché quand catchError a dégradé le build (ex. OWASP avec CVE >= 7)
+        // sans ce bloc, les post actions sont silencieuses en cas de résultat UNSTABLE
+        unstable {
+            echo "Pipeline UNSTABLE - OWASP ou Trivy a détecté des vulnérabilités : ${IMAGE_TAG}"
         }
         failure {
             echo 'Pipeline FAILED - voir les logs Jenkins et les rapports OWASP/Trivy'

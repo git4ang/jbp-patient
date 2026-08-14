@@ -12,7 +12,7 @@ plugins {
 }
 
 group = 'fr.testlab.jbp'
-version = '2.0.0'  // G6 : stack moderne
+version = project.findProperty('releaseVersion') ?: '2.0.0'  // local: 2.0.0 -- Jenkins: -PreleaseVersion=2.0.${BUILD_NUMBER}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_25
@@ -20,7 +20,16 @@ java {
 }
 
 repositories {
-    mavenCentral()
+    // mavenCentral()
+    maven {
+        url 'http://localhost:8081/repository/maven-public/'  // groupe Nexus = central + releases
+        allowInsecureProtocol = true
+        credentials {
+            username = System.getenv('NEXUS_USER') ?: 'admin'
+            password = System.getenv('NEXUS_PASS') ?: ''
+        }
+    }
+
 }
 
 // Publication du JAR vers Nexus
