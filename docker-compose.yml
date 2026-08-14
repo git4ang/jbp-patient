@@ -108,6 +108,8 @@ services:
       # Cle 32 chars obligatoire pour le module alerting (Rules)
       # Sans cette cle : "Additional setup required" et pas de bouton Create rule
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=jbppatient-kibana-encrypt-key-32c
+      # Désactive le bandeau "Your data is not secure" -- coherent avec ES xpack.security=false
+      - XPACK_SECURITY_ENABLED=false
     depends_on:
       - elasticsearch
     restart: unless-stopped
@@ -136,6 +138,38 @@ services:
       - logstash
     restart: unless-stopped
 
+  # ─── G9 : Prometheus + Grafana ───────────────────────────────────────────
+
+  # Prometheus : scrape /metrics de jbp-patient toutes les 15s, stocke les series temporelles
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: jbp-prometheus
+    networks:
+      - jbp-net
+    ports:
+      - "9090:9090"    # UI Prometheus (exploration des métriques brutes)
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # résout host.docker.internal vers l'hôte
+    restart: unless-stopped
+
+  # Grafana : dashboards visuels sur les métriques stockées dans Prometheus
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: jbp-grafana
+    networks:
+      - jbp-net
+    ports:
+      - "3000:3000"    # UI Grafana (admin/admin par défaut)
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin   # mot de passe admin Grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
   # ─── Gitea (remote Git local - optionnel, décommenter si pas de GitHub) ───
   # gitea:
   #   image: gitea/gitea:latest
@@ -155,4 +189,5 @@ volumes:
   sonar_logs: {}
   nexus_data: {}
   es_data: {}          # données Elasticsearch (index, logs)
+  grafana_data: {}     # dashboards et datasources Grafana
   # gitea_data: {}

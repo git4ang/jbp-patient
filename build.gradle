@@ -51,8 +51,8 @@ publishing {
             url  = System.getenv('NEXUS_URL') ?: 'http://localhost:8081/repository/maven-releases/'
             credentials {
                 // Credentials depuis variables d'env -- jamais hardcodés
-                username = System.getenv('NEXUS_USER') ?: 'admin'
-                password = System.getenv('NEXUS_PASS') ?: ''
+                username = System.getenv('NEXUS_USER') ?: project.findProperty('nexusUser') ?: 'admin'
+                password = System.getenv('NEXUS_PASS') ?: project.findProperty('nexusPass') ?: ''
             }
         }
     }
@@ -80,6 +80,11 @@ dependencies {
     // JUnit 5 (remplace JUnit 4)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Prometheus Java client -- expose /metrics au format Prometheus
+    implementation 'io.prometheus:simpleclient:0.16.0'
+    implementation 'io.prometheus:simpleclient_hotspot:0.16.0'    // métriques JVM (heap, GC, threads)
+    implementation 'io.prometheus:simpleclient_common:0.16.0'     // TextFormat -- sérialisation au format texte Prometheus
 
     // Testcontainers -- démarre un vrai PostgreSQL Docker pendant les tests
     testImplementation 'org.testcontainers:junit-jupiter:1.21.0'
@@ -135,5 +140,5 @@ dependencyCheck {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs += ['-nowarn']
+//    options.compilerArgs += ['-nowarn']
 }
