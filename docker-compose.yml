@@ -58,6 +58,83 @@ services:
       - nexus_data:/nexus-data
     restart: unless-stopped
 
+  # ─── ELK Stack ────────────────────────────────────────────────────────────
+
+  # Elasticsearch : moteur de stockage et d'indexation des logs
+  # xpack.security.enabled=false : pas d'auth pour l'apprentissage (HTTPS/auth en G11)
+  # heap 512m : minimum viable -- augmenter si RAM disponible
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: jbp-elasticsearch
+    networks:
+      - jbp-net
+    ports:
+      - "9200:9200"    # API REST Elasticsearch (requetes, index, search)
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node          # mode standalone (pas de cluster)
+      - xpack.security.enabled=false        # desactive auth/TLS pour le dev
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m     # heap limite (RAM contrainte : 1.8 Go dispo)
+    restart: unless-stopped
+
+  # Logstash : collecte, parse et route les logs vers Elasticsearch
+  # heap 256m : minimum viable pour l'apprentissage
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    container_name: jbp-logstash
+    networks:
+      - jbp-net
+    ports:
+      - "5044:5044"    # port Beats -- Filebeat envoie ici
+    volumes:
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro  # config pipeline
+    environment:
+      - LS_JAVA_OPTS=-Xms256m -Xmx256m     # heap limite
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # Kibana : UI de visualisation des logs indexés dans Elasticsearch
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: jbp-kibana
+    networks:
+      - jbp-net
+    ports:
+      - "5601:5601"    # UI Kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200  # nom de service Docker
+      # Cle 32 chars obligatoire pour le module alerting (Rules)
+      # Sans cette cle : "Additional setup required" et pas de bouton Create rule
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=jbppatient-kibana-encrypt-key-32c
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # Filebeat : agent leger qui lit les logs Docker et les envoie a Logstash
+  # Monte le socket Docker + les logs des conteneurs en lecture seule
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.4
+    container_name: jbp-filebeat
+    networks:
+      - jbp-net
+    user: root                               # root requis pour lire /var/lib/docker/containers
+    # --strict.perms=false : desactive la verification que filebeat.yml est owned by root
+    # necessaire quand le fichier est monté depuis un hôte où il appartient à un user non-root
+    command: ["filebeat", "-e", "--strict.perms=false"]
+    environment:
+      # C09/C23 : API Docker 1.43 trop ancienne -- force 1.44 comme pour Testcontainers
+      - DOCKER_API_VERSION=1.44
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      # data-root Docker non standard : /home/ang/wraptor/docker/ (voir /etc/docker/daemon.json)
+      # chemin par defaut /var/lib/docker/containers n'existe pas sur cette machine
+      - /home/ang/wraptor/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro               # metadata conteneurs
+    depends_on:
+      - logstash
+    restart: unless-stopped
 
   # ─── Gitea (remote Git local - optionnel, décommenter si pas de GitHub) ───
   # gitea:
@@ -77,4 +154,5 @@ volumes:
   sonar_data: {}
   sonar_logs: {}
   nexus_data: {}
+  es_data: {}          # données Elasticsearch (index, logs)
   # gitea_data: {}

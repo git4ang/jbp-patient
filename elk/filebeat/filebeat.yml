@@ -1,0 +1,16 @@
+# Filebeat -- collecte des logs Docker pour jbp-patient G8
+#
+# type: container lit directement les fichiers de log Docker dans /var/lib/docker/containers/
+# Pas d'autodiscover -- evite le bug API Docker 1.43 (C09/C23)
+
+filebeat.inputs:
+  - type: container
+    paths:
+      - /var/lib/docker/containers/*/*.log   # tous les conteneurs Docker
+
+output.logstash:
+  hosts: ["logstash:5044"]    # nom de service Docker -- port Beats
+
+# Niveau de log Filebeat (warning pour limiter le bruit)
+logging.level: warning
+logging.to_files: false
