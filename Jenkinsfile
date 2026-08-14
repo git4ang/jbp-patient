@@ -7,8 +7,11 @@ pipeline {
 
     // IMAGE_TAG : tag de l'image Docker tracable par numéro de build Jenkins
     // Ex. : jbp-patient:42 -- permet de savoir quelle image = quel build
+    // NEXUS_URL : nom de conteneur Docker (pas localhost -- Jenkins est dans son propre conteneur)
+    // jbp-nexus est le nom du service Nexus sur le réseau jbp-net
     environment {
         IMAGE_TAG = "jbp-patient:${env.BUILD_NUMBER}"
+        NEXUS_URL = "http://jbp-nexus:8081/repository/maven-releases/"
     }
 
     stages {
@@ -106,6 +109,35 @@ pipeline {
                     '''
                 }
             }
+        }
+
+        // Nexus Publish : pousse le JAR Maven + l'image Docker vers Nexus
+        // withCredentials injecte NEXUS_USER et NEXUS_PASS depuis Jenkins
+        stage('Nexus Publish') {
+          steps {
+              // Publication du JAR dans Nexus Maven
+              withCredentials([usernamePassword(
+                  credentialsId : 'nexus-credentials',
+                  usernameVariable: 'NEXUS_USER',
+                  passwordVariable: 'NEXUS_PASS'
+              )]) {
+                  sh './gradlew publish'
+              }
+
+              // Push de l'image Docker vers le registre Docker de Nexus
+              // docker login nécessaire pour s'authentifier sur le registre Nexus
+              withCredentials([usernamePassword(
+                  credentialsId : 'nexus-credentials',
+                  usernameVariable: 'NEXUS_USER',
+                  passwordVariable: 'NEXUS_PASS'
+              )]) {
+                  sh '''
+                      echo "$NEXUS_PASS" | docker login jbp-nexus:8082 -u "$NEXUS_USER" --password-stdin
+                      docker tag ${IMAGE_TAG} jbp-nexus:8082/jbp-patient:${BUILD_NUMBER}
+                      docker push jbp-nexus:8082/jbp-patient:${BUILD_NUMBER}
+                  '''
+              }
+          }
         }
     }
 

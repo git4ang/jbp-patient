@@ -7,6 +7,8 @@ plugins {
     id 'jacoco'
     // OWASP Dependency Check -- scanne les CVE dans les dépendances
     id 'org.owasp.dependencycheck' version '10.0.4'
+
+    id 'maven-publish'    // publie le JAR dans Nexus
 }
 
 group = 'fr.testlab.jbp'
@@ -20,6 +22,33 @@ java {
 repositories {
     mavenCentral()
 }
+
+// Publication du JAR vers Nexus
+// URL et credentials lus depuis variables d'env -- jamais en dur
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java    // publie le JAR compilé
+            groupId    = 'fr.testlab.jbp'
+            artifactId = 'jbp-patient'
+            version    = project.version   // '2.0.0' défini en haut
+        }
+    }
+    repositories {
+        maven {
+            name = 'nexus'
+            // URL du repo Nexus -- "releases" pour les versions stables
+            allowInsecureProtocol = true  // Nexus HTTP local -- opt-in explicite requis par Gradle 7+
+            url  = System.getenv('NEXUS_URL') ?: 'http://localhost:8081/repository/maven-releases/'
+            credentials {
+                // Credentials depuis variables d'env -- jamais hardcodés
+                username = System.getenv('NEXUS_USER') ?: 'admin'
+                password = System.getenv('NEXUS_PASS') ?: ''
+            }
+        }
+    }
+}
+
 
 dependencies {
     // CXF 4.0.6 -- correctifs sécurité vs 4.0.5 (CVE-2025-23184, CVE-2025-48913...)

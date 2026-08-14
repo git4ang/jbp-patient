@@ -10,7 +10,9 @@ services:
 
   # ─── Jenkins ──────────────────────────────────────────────────────────────
   jenkins:
-    image: jenkins/jenkins:lts-jdk21
+    build:
+      context: ./jenkins          # Dockerfile dans jenkins/ -- Docker CLI + Trivy inclus
+    image: jbp-jenkins:custom     # nom de l'image buildée localement
     container_name: jbp-jenkins
     networks:
       - jbp-net
@@ -23,6 +25,8 @@ services:
       - /opt/jdk-25:/opt/jdk-25:ro                 # JDK 25 hôte monte en lecture seule
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+    group_add:
+      - "137"                              # groupe docker hote -- acces /var/run/docker.sock
     restart: unless-stopped
 
   # ─── SonarQube ────────────────────────────────────────────────────────────
@@ -42,6 +46,19 @@ services:
       - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
     restart: unless-stopped
 
+  # --- Nexus ----------------------------------------------------------------
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: jbp-nexus
+    networks: [ jbp-net ]
+    ports:
+      - "8081:8081"    # UI Nexus + repository Maven
+      - "8082:8082"    # Docker registry (port dédié)
+    volumes:
+      - nexus_data:/nexus-data
+    restart: unless-stopped
+
+
   # ─── Gitea (remote Git local - optionnel, décommenter si pas de GitHub) ───
   # gitea:
   #   image: gitea/gitea:latest
@@ -59,4 +76,5 @@ volumes:
   jenkins_home: {}
   sonar_data: {}
   sonar_logs: {}
+  nexus_data: {}
   # gitea_data: {}
