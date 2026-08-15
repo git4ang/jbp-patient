@@ -16,17 +16,20 @@ public class BasicAuthFilter implements ContainerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(BasicAuthFilter.class);
 
-    // Identifiants en dur pour le projet de test
     private static final String VALID_USER = "admin";
     private static final String VALID_PASS = "admin";
 
     @Override
     public void filter(ContainerRequestContext ctx) {
 
-        // ① /metrics est public -- Prometheus scrape sans credentials
-        // Pas d'auth sur ce chemin pour permettre le scrape automatique
+        // ① Chemins publics -- pas d'auth requise
+        // /metrics  : Prometheus scrape sans credentials
+        // /health   : liveness probe Jenkins/K8s/load balancer
+        // /openapi* : documentation API publique (openapi.json, openapi.yaml)
         String path = ctx.getUriInfo().getPath();
-        if (path.equals("metrics") || path.startsWith("metrics/")) {
+        if (path.equals("metrics")  || path.startsWith("metrics/")  ||
+            path.equals("health")   || path.startsWith("health/")   ||
+            path.startsWith("openapi")) {
             return;
         }
 

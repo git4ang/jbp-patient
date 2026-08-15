@@ -9,6 +9,9 @@ plugins {
     id 'org.owasp.dependencycheck' version '10.0.4'
 
     id 'maven-publish'    // publie le JAR dans Nexus
+    // G11 B27 : plugin io.gatling.gradle retiré -- incompatible Java 25
+    // ASM interne de Gatling 3.11.x ne supporte pas les class files Java 25 (version 69)
+    // Gatling est lancé en mode standalone : scripts/run-gatling.sh
 }
 
 group = 'fr.testlab.jbp'
@@ -86,6 +89,12 @@ dependencies {
     // (JAXRSServerFactoryBean + Jetty embarqué ne passe pas par un servlet container)
     implementation 'io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.9.0'
 
+    // G11 B16 : OpenAPI / Swagger standalone (cxf-rt-rs-service-description-openapi indisponible en 4.0.6)
+    // swagger-jaxrs2-jakarta : scanne les annotations @Operation/@Tag et génère le schéma OpenAPI 3.0
+    // swagger-integration-jakarta : intégration JAX-RS (Reader + ReaderListener), compatibilité jakarta.*
+    implementation 'io.swagger.core.v3:swagger-jaxrs2-jakarta:2.2.22'
+    implementation 'io.swagger.core.v3:swagger-integration-jakarta:2.2.22'
+
     // Prometheus Java client -- expose /metrics au format Prometheus
     implementation 'io.prometheus:simpleclient:0.16.0'
     implementation 'io.prometheus:simpleclient_hotspot:0.16.0'    // métriques JVM (heap, GC, threads)
@@ -97,11 +106,14 @@ dependencies {
 
     // Driver JDBC PostgreSQL -- connexion à PostgreSQL via DriverManager
     testImplementation 'org.postgresql:postgresql:42.7.3'
+
+    // G11 B27 : Gatling via standalone (pas de dépendance Gradle -- voir scripts/run-gatling.sh)
 }
 
 application {
     mainClass = 'fr.testlab.jbp.patient.app.JbpApplication'
 }
+
 
 test {
     useJUnitPlatform()
