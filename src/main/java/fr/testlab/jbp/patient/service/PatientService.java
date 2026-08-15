@@ -1,6 +1,8 @@
 package fr.testlab.jbp.patient.service;
 
 import fr.testlab.jbp.patient.model.Patient;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,12 +25,21 @@ public class PatientService {
         save(new Patient(0, "Martin", "Pierre", "pierre@testlab.fr"));
     }
 
+    // G10 : @WithSpan cree un span enfant sous le span de PatientResource.getAll()
+    @WithSpan("PatientService.findAll")
     public List<Patient> findAll() {
+        Span.current().setAttribute("patient.count", store.size()); // attribut visible dans Jaeger
         return new ArrayList<>(store.values());
     }
 
+    // G10 : @WithSpan cree un span enfant sous le span de PatientResource.getById()
+    // Span.current().setAttribute() ajoute l'id recherche comme attribut de trace
+    @WithSpan("PatientService.findById")
     public Patient findById(int id) {
-        return store.get(id);
+        Patient p = store.get(id);
+        Span.current().setAttribute("patient.id", id);          // id recherche
+        Span.current().setAttribute("patient.found", p != null); // true/false visible dans Jaeger
+        return p;
     }
 
     public Patient save(Patient p) {

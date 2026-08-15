@@ -44,7 +44,7 @@ echo "  Log      : $LOG_FILE"
 echo "  Endpoint : $OTLP_ENDPOINT"
 echo ""
 
-pkill -f "JbpApplication" 2>/dev/null; sleep 1
+pkill -f "JbpApplication" 2>/dev/null || true; sleep 1
 
 java \
   -javaagent:otel/opentelemetry-javaagent.jar \

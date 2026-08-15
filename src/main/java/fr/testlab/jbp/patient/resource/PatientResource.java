@@ -2,6 +2,7 @@ package fr.testlab.jbp.patient.resource;
 
 import fr.testlab.jbp.patient.model.Patient;
 import fr.testlab.jbp.patient.service.PatientService;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 
 import jakarta.ws.rs.Consumes;
@@ -16,9 +17,8 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 
 // G6 : jakarta.ws.rs.* (remplace javax.ws.rs.* de G1)
-// G10 : @WithSpan sur chaque méthode -- JAXRSAnnotationsInstrumentationModule est désactivé
-//        en mode programmatique (JAXRSServerFactoryBean + Jetty embarqué sans servlet container)
-//        @WithSpan est instrumenté par WithSpanInstrumentationModule qui lui est bien actif
+// G10 : @WithSpan sur chaque methode -- JAXRSAnnotationsInstrumentationModule desactive
+//        en mode programmatique (JAXRSServerFactoryBean + Jetty embarque sans servlet container)
 @Path("/patients")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -40,26 +40,33 @@ public class PatientResource {
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") int id) {
+        Span.current().setAttribute("http.request.patient_id", id); // attribut visible dans Jaeger
         Patient p = service.findById(id);
         if (p == null) {
+            Span.current().setAttribute("http.response.status", 404);
             return Response.status(Response.Status.NOT_FOUND).build();
         }
+        Span.current().setAttribute("http.response.status", 200);
         return Response.ok(p).build();
     }
 
     @WithSpan("POST /patients")
     @POST
     public Response create(Patient p) {
-        return Response.status(Response.Status.CREATED).entity(service.save(p)).build();
+        Patient saved = service.save(p);
+        Span.current().setAttribute("patient.id.created", saved.getId());
+        return Response.status(Response.Status.CREATED).entity(saved).build();
     }
 
     @WithSpan("DELETE /patients/{id}")
     @DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") int id) {
+        Span.current().setAttribute("http.request.patient_id", id);
         if (service.delete(id)) {
             return Response.noContent().build();
         }
+        Span.current().setAttribute("http.response.status", 404);
         return Response.status(Response.Status.NOT_FOUND).build();
     }
 }
