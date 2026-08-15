@@ -2,6 +2,7 @@ package fr.testlab.jbp.patient.resource;
 
 import fr.testlab.jbp.patient.model.Patient;
 import fr.testlab.jbp.patient.service.PatientService;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -15,6 +16,9 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 
 // G6 : jakarta.ws.rs.* (remplace javax.ws.rs.* de G1)
+// G10 : @WithSpan sur chaque méthode -- JAXRSAnnotationsInstrumentationModule est désactivé
+//        en mode programmatique (JAXRSServerFactoryBean + Jetty embarqué sans servlet container)
+//        @WithSpan est instrumenté par WithSpanInstrumentationModule qui lui est bien actif
 @Path("/patients")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -26,11 +30,13 @@ public class PatientResource {
         this.service = service;
     }
 
+    @WithSpan("GET /patients")
     @GET
     public List<Patient> getAll() {
         return service.findAll();
     }
 
+    @WithSpan("GET /patients/{id}")
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") int id) {
@@ -41,11 +47,13 @@ public class PatientResource {
         return Response.ok(p).build();
     }
 
+    @WithSpan("POST /patients")
     @POST
     public Response create(Patient p) {
         return Response.status(Response.Status.CREATED).entity(service.save(p)).build();
     }
 
+    @WithSpan("DELETE /patients/{id}")
     @DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") int id) {

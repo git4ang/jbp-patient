@@ -11,7 +11,7 @@ scrape_configs:
   # host.docker.internal : adresse de la machine hote depuis un conteneur Docker
   - job_name: 'jbp-patient'
     static_configs:
-      - targets: ['host.docker.internal:8383']  # port 8383 expose par le conteneur jbp-patient
+      - targets: ['host.docker.internal:8080']  # port 8080 -- jbp-patient ecoute sur 8080 (factory.setAddress("http://0.0.0.0:8080/api"))
     metrics_path: '/api/metrics'
     # Pas d'auth car /metrics ne passe pas par BasicAuthFilter (filtre sur /api/patients uniquement)
 

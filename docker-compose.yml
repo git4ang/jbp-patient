@@ -170,6 +170,31 @@ services:
       - prometheus
     restart: unless-stopped
 
+  # ─── G10 : Jaeger (collecteur + UI traces distribuées) ──────────────────────
+  #
+  # "all-in-one" = collecteur OTLP + stockage in-memory + UI dans un seul conteneur
+  # Parfait pour le dev/apprentissage -- en prod : Jaeger distribué avec Cassandra/ES
+  #
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: jbp-jaeger
+    networks:
+      - jbp-net
+    ports:
+      # UI Jaeger : recherche et visualisation des traces
+      - "16686:16686"
+      # OTLP gRPC : canal principal OTEL agent → Jaeger (protocole binaire, performant)
+      - "4317:4317"
+      # OTLP HTTP : alternative JSON/Protobuf (curl-friendly, plus facile à débugger)
+      - "4318:4318"
+    environment:
+      # Active le receiver OTLP (format OpenTelemetry)
+      # Sans ce flag, Jaeger n'écoute que sur le format Zipkin/Jaeger natif (ports 14250/6831)
+      - COLLECTOR_OTLP_ENABLED=true
+      # Niveau de log réduit -- "info" suffit pour l'apprentissage (sinon très verbeux)
+      - LOG_LEVEL=info
+    restart: unless-stopped
+
   # ─── Gitea (remote Git local - optionnel, décommenter si pas de GitHub) ───
   # gitea:
   #   image: gitea/gitea:latest

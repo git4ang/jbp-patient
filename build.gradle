@@ -81,6 +81,11 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // G10 : OTEL annotations -- @WithSpan sur les méthodes resource pour créer des spans
+    // nécessaire car JAXRSAnnotationsInstrumentationModule est désactivé en mode programmatique
+    // (JAXRSServerFactoryBean + Jetty embarqué ne passe pas par un servlet container)
+    implementation 'io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.9.0'
+
     // Prometheus Java client -- expose /metrics au format Prometheus
     implementation 'io.prometheus:simpleclient:0.16.0'
     implementation 'io.prometheus:simpleclient_hotspot:0.16.0'    // métriques JVM (heap, GC, threads)
