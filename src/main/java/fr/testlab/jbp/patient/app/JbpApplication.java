@@ -1,6 +1,7 @@
 package fr.testlab.jbp.patient.app;
 
-import fr.testlab.jbp.patient.auth.BasicAuthFilter;
+import fr.testlab.jbp.patient.auth.AuthResource;
+import fr.testlab.jbp.patient.auth.JwtAuthFilter;
 import fr.testlab.jbp.patient.resource.HealthResource;
 import fr.testlab.jbp.patient.resource.MetricsResource;
 import fr.testlab.jbp.patient.resource.PatientResource;
@@ -15,9 +16,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-// G6  : SLF4J + log4j2, CXF 4.x/jakarta.*, Virtual Thread watchdog, auth basique
+// G6  : SLF4J + log4j2, CXF 4.x/jakarta.*, Virtual Thread watchdog
 // G9  : MetricsResource expose /metrics au format Prometheus
-// G11 : HealthResource (/health), APP_PORT/APP_HOST, OpenApiResource (/openapi.json)
+// G13 : HealthResource (/health), APP_PORT/APP_HOST, OpenApiResource (/openapi.json)
+// G11 : AuthResource (/auth/login) + JwtAuthFilter -- remplace BasicAuthFilter
 public class JbpApplication {
 
     private static final Logger log = LoggerFactory.getLogger(JbpApplication.class);
@@ -32,20 +34,23 @@ public class JbpApplication {
         PatientResource resource = new PatientResource(service);
         MetricsResource metrics  = new MetricsResource();
         HealthResource  health   = new HealthResource();
+        AuthResource    auth     = new AuthResource();
         // B16 : OpenApiResource (swagger-jaxrs2-jakarta) expose /openapi.json et /openapi.yaml
-        // scanne automatiquement les classes @Path enregistrées dans le serveur CXF
         OpenApiResource openApi  = new OpenApiResource();
 
         JAXRSServerFactoryBean factory = new JAXRSServerFactoryBean();
         factory.setAddress("http://" + host + ":" + port + "/api");
-        factory.setServiceBeans(List.of(resource, metrics, health, openApi));
-        factory.setProviders(List.of(new JacksonJsonProvider(), new BasicAuthFilter()));
+        // AuthResource enregistre POST /api/auth/login (public -- pas d'auth)
+        factory.setServiceBeans(List.of(resource, metrics, health, openApi, auth));
+        // JwtAuthFilter remplace BasicAuthFilter : valide token Bearer sur /patients
+        factory.setProviders(List.of(new JacksonJsonProvider(), new JwtAuthFilter()));
 
         Server server = factory.create();
         log.info("jbp-patient demarre sur http://{}:{}/api", host, port);
-        log.info("G9  : metriques Prometheus sur http://{}:{}/api/metrics", host, port);
-        log.info("G11 : health       sur http://{}:{}/api/health", host, port);
-        log.info("G11 : openapi.json sur http://{}:{}/api/openapi.json", host, port);
+        log.info("G9  : metriques    sur http://{}:{}/api/metrics", host, port);
+        log.info("G13 : health       sur http://{}:{}/api/health", host, port);
+        log.info("G13 : openapi.json sur http://{}:{}/api/openapi.json", host, port);
+        log.info("G11 : login JWT    sur http://{}:{}/api/auth/login  [POST]", host, port);
 
         Thread.ofVirtual().name("jbp-watchdog").start(() -> {
             while (!Thread.currentThread().isInterrupted()) {

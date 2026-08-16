@@ -108,6 +108,14 @@ dependencies {
     testImplementation 'org.postgresql:postgresql:42.7.3'
 
     // G11 B27 : Gatling via standalone (pas de dépendance Gradle -- voir scripts/run-gatling.sh)
+
+    // G11 JWT : génération et validation de tokens JWT signés HMAC-SHA256
+    // jjwt-api    : interfaces publiques (Jwts, Claims, JwtBuilder...)
+    // jjwt-impl   : implémentation interne (runtimeOnly -- pas besoin au compile)
+    // jjwt-jackson: sérialiseur JSON du payload JWT via Jackson (runtimeOnly)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
 }
 
 application {
