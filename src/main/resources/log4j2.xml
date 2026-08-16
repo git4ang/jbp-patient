@@ -3,16 +3,32 @@
 
     <Appenders>
 
-        <!-- Console : stdout (remplace ConsoleAppender log4j 1.x) -->
+        <!-- Console : PatternLayout - reste lisible en développement local -->
         <Console name="console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %c{1} - %m%n"/>
+            <PatternLayout pattern="%d{HH:mm:ss} %-5level %c{1} - %m%n"/>
         </Console>
 
-        <!-- Fichier rolling : 10 Mo max, 5 fichiers (identique a log4j 1.x) -->
+        <!--
+            Fichier : JsonTemplateLayout (G14)
+            AVANT : PatternLayout → texte brut → Logstash devait parser avec grok
+            APRÈS : JsonTemplateLayout → JSON natif → Logstash transmet sans parser
+                    Filebeat lit le JSON ligne par ligne → chaque champ est indexable dans Kibana
+
+            EcsLayout.json = template Elastic Common Schema fourni avec log4j-layout-template-json
+            Champs produits :
+              @timestamp          → horodatage ISO8601 (remplace le champ "time" de Filebeat)
+              log.level           → INFO / WARN / ERROR
+              log.logger          → nom de la classe qui émet le log
+              message             → texte du log
+              process.thread.name → nom du thread (ex: VirtualThread-12)
+              error.type          → classe de l'exception (si présente)
+              error.message       → message de l'exception
+              error.stack_trace   → stack trace complète
+        -->
         <RollingFile name="file"
                      fileName="logs/jbp-patient.log"
                      filePattern="logs/jbp-patient-%i.log.gz">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %c{1} - %m%n"/>
+            <JsonTemplateLayout eventTemplateUri="classpath:EcsLayout.json"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="10MB"/>
             </Policies>
@@ -22,7 +38,7 @@
     </Appenders>
 
     <Loggers>
-        <!-- Logger racine : INFO vers console + fichier -->
+        <!-- Logger racine : INFO vers console (texte) + fichier (JSON) -->
         <Root level="INFO">
             <AppenderRef ref="console"/>
             <AppenderRef ref="file"/>

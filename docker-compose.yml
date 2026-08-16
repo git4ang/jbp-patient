@@ -134,6 +134,9 @@ services:
       # chemin par defaut /var/lib/docker/containers n'existe pas sur cette machine
       - /home/ang/wraptor/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro               # metadata conteneurs
+      # G14 : jbp-patient tourne hors Docker -- Filebeat lit le fichier NDJSON local
+      # monte en /logs/jbp-patient/ dans le conteneur (chemin dans filebeat.yml)
+      - ./logs:/logs/jbp-patient:ro
     depends_on:
       - logstash
     restart: unless-stopped

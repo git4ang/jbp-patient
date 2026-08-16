@@ -79,6 +79,9 @@ dependencies {
     // log4j2 2.24.3 -- correctifs sécurité vs 2.23.1 (CVE-2026-34477 RCE, CVE-2025-68161...)
     implementation 'org.apache.logging.log4j:log4j-core:2.24.3'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3'
+    // G14 : JsonTemplateLayout -- module séparé de log4j-core depuis 2.14
+    // Contient EcsLayout.json (template Elastic Common Schema) + GelfLayout.json
+    implementation 'org.apache.logging.log4j:log4j-layout-template-json:2.24.3'
 
     // JUnit 5 (remplace JUnit 4)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
