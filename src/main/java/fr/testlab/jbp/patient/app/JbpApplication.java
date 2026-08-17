@@ -2,6 +2,7 @@ package fr.testlab.jbp.patient.app;
 
 import fr.testlab.jbp.patient.auth.AuthResource;
 import fr.testlab.jbp.patient.auth.JwtAuthFilter;
+import fr.testlab.jbp.patient.filter.CorrelationFilter;
 import fr.testlab.jbp.patient.resource.HealthResource;
 import fr.testlab.jbp.patient.resource.MetricsResource;
 import fr.testlab.jbp.patient.resource.PatientResource;
@@ -20,6 +21,7 @@ import java.util.List;
 // G9  : MetricsResource expose /metrics au format Prometheus
 // G13 : HealthResource (/health), APP_PORT/APP_HOST, OpenApiResource (/openapi.json)
 // G11 : AuthResource (/auth/login) + JwtAuthFilter -- remplace BasicAuthFilter
+// G15 : CorrelationFilter -- injecte X-Correlation-Id dans chaque requete/reponse
 public class JbpApplication {
 
     private static final Logger log = LoggerFactory.getLogger(JbpApplication.class);
@@ -42,8 +44,9 @@ public class JbpApplication {
         factory.setAddress("http://" + host + ":" + port + "/api");
         // AuthResource enregistre POST /api/auth/login (public -- pas d'auth)
         factory.setServiceBeans(List.of(resource, metrics, health, openApi, auth));
-        // JwtAuthFilter remplace BasicAuthFilter : valide token Bearer sur /patients
-        factory.setProviders(List.of(new JacksonJsonProvider(), new JwtAuthFilter()));
+        // G15 : CorrelationFilter (priority 500) s'execute avant JwtAuthFilter (priority 1000)
+        //       --> les logs de rejet JWT ont aussi un correlationId
+        factory.setProviders(List.of(new JacksonJsonProvider(), new CorrelationFilter(), new JwtAuthFilter()));
 
         Server server = factory.create();
         log.info("jbp-patient demarre sur http://{}:{}/api", host, port);
@@ -51,6 +54,7 @@ public class JbpApplication {
         log.info("G13 : health       sur http://{}:{}/api/health", host, port);
         log.info("G13 : openapi.json sur http://{}:{}/api/openapi.json", host, port);
         log.info("G11 : login JWT    sur http://{}:{}/api/auth/login  [POST]", host, port);
+        log.info("G15 : correlationId injecte via X-Correlation-Id sur chaque requete", host, port);
 
         Thread.ofVirtual().name("jbp-watchdog").start(() -> {
             while (!Thread.currentThread().isInterrupted()) {
